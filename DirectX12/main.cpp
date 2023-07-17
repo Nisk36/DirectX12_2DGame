@@ -51,8 +51,6 @@ IDXGISwapChain4* _swapChain = nullptr;
 ID3D12CommandAllocator* _cmdAllocator = nullptr;
 ID3D12GraphicsCommandList* _cmdList = nullptr;
 ID3D12CommandQueue* _cmdQueue = nullptr;
-ID3D12DescriptorHeap* _rtvHeaps = nullptr;
-ID3D12Fence* _fence = nullptr;
 
 void EnableDebugLayer() {
 	ID3D12Debug* debugLayer = nullptr;
@@ -112,15 +110,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		D3D_FEATURE_LEVEL_11_0,
 	};
 
-#ifdef _DEBUG
-	auto result = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&_dxgiFactory));
-	if (result != S_OK) return -1;
-#else
-	auto result = CreateDXGIFactory1(IID_PPV_ARGS(&_dxgiFactory));
-	if (result != S_OK) {
-		return -1;
+	HRESULT result = S_OK;
+	if (FAILED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&_dxgiFactory)))) {
+		if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&_dxgiFactory)))) {
+			return -1;
+		}
 	}
-#endif
+
 	//アダプターの列挙用
 	vector<IDXGIAdapter*> adapters;
 	//ここに特定の名前を持つアダプターオブジェクトが入る
@@ -207,6 +203,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	if (result != S_OK) return -1;
 
 	//DescriptorHeap作成
+	ID3D12DescriptorHeap* _rtvHeaps = nullptr;
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;//どんなビューを作るのか指定、ここではレンダーターゲットビュー(RTV)
 	heapDesc.NodeMask = 0;//GPUは1つであるため0でよい
@@ -225,6 +222,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	vector<ID3D12Resource*> _backBuffers(swpDesc.BufferCount);
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = _rtvHeaps->GetCPUDescriptorHandleForHeapStart(); //先頭のアドレスを得る
 	for (int i = 0; i < swpDesc.BufferCount; i++) { //バックバッファーの数だけ設定する必要がある
+		result = _swapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&_backBuffers[i]));
 		//RTV生成
 		_dev->CreateRenderTargetView(_backBuffers[i], nullptr, handle);
 		//ポインターをずらす
@@ -232,6 +230,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 
 	//フェンスの生成
+	ID3D12Fence* _fence = nullptr;
 	UINT64 _fenceVal = 0;
 	result = _dev->CreateFence(_fenceVal, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&_fence));
 
