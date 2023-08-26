@@ -243,9 +243,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//頂点シェーダーの受け皿
 	XMFLOAT3 vertices[] =
 	{
-		{-1.0f, -1.0f, 0.0f},//左下
-		{-1.0f, 1.0f, 0.0f},//左上
-		{1.0f, -1.0f, 0.0f}//右下
+		{-0.5f, -0.7f, 0.0f},//左下
+		{0.0f, 0.7f, 0.0f},//左上
+		{0.5f, -0.7f, 0.0f}//右下
 	};
 
 	//CreateCommitResource()用のヒープ構造体の定義
@@ -276,6 +276,43 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		nullptr,
 		IID_PPV_ARGS(&vertBuff));
 	if (result != S_OK) return -1;
+
+	XMFLOAT3* vertMap = nullptr;
+	result = vertBuff->Map(0, nullptr, (void**)&vertMap);
+
+	std::copy(std::begin(vertices), std::end(vertices), vertMap);
+
+	vertBuff->Unmap(0, nullptr);
+
+	D3D12_VERTEX_BUFFER_VIEW vbView = {};
+	vbView.BufferLocation = vertBuff->GetGPUVirtualAddress();//バッファの仮想アドレス
+	vbView.SizeInBytes = sizeof(vertices);//全バイト数
+	vbView.StrideInBytes = sizeof(vertices[0]);//1頂点あたりのバイト数
+
+	unsigned short indices[] = { 0,1,2, 2,1,3 };
+
+	ID3D12Resource* idxBuff = nullptr;
+	resdesc.Width = sizeof(indices);
+	result = _dev->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resdesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&idxBuff));
+
+	//作ったバッファにインデックスデータをコピー
+	unsigned short* mappedIdx = nullptr;
+	idxBuff->Map(0, nullptr, (void**)&mappedIdx);
+	std::copy(std::begin(indices), std::end(indices), mappedIdx);
+	idxBuff->Unmap(0, nullptr);
+
+	//インデックスバッファビューを作成
+	D3D12_INDEX_BUFFER_VIEW ibView = {};
+	ibView.BufferLocation = idxBuff->GetGPUVirtualAddress();
+	ibView.Format = DXGI_FORMAT_R16_UINT;
+	ibView.SizeInBytes = sizeof(indices);
+
 	//シェーダの読み込みと生成
 	ID3DBlob* _vsBlob = nullptr;
 	ID3DBlob* _psBlob = nullptr;
@@ -373,12 +410,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &rootSigBlob, &errorBlob);
 	result = _dev->CreateRootSignature(0, rootSigBlob->GetBufferPointer(), rootSigBlob->GetBufferSize(), IID_PPV_ARGS(&rootsignature));
 	rootSigBlob->Release();
+	// グラフィックスパイプラインステートに設定
 	gpipeline.pRootSignature = rootsignature;
-
+	//パイプラインステートの作成
 	ID3D12PipelineState* _pipelinestate = nullptr;
 	result = _dev->CreateGraphicsPipelineState(&gpipeline, IID_PPV_ARGS(&_pipelinestate));
+	if (result != S_OK) {
+		return -1;
+	}
+
+	//ビューポート(画面に対してレンダリング結果をどのように表示するか)の設定
+	D3D12_VIEWPORT viewport = {};
+	viewport.Width = window_width;
+	viewport.Height = window_height;
+	viewport.TopLeftX = 0;//出力先の左上座標X
+	viewport.TopLeftY = 0;//出力先の右上座標Y
+	viewport.MaxDepth = 1.0f;
+	viewport.MinDepth = 0.0f;
+
+	//シザー短形(ビューポートに出力された画像のどこからどこまでを実際に画面に映し出すか)の設定
+	D3D12_RECT scissorrect = {};
+	scissorrect.top = 0;
+	scissorrect.left = 0;
+	scissorrect.right = scissorrect.left + window_width;
+	scissorrect.bottom = scissorrect.bottom + window_height;
+
+
 
 	MSG msg = {};
+	unsigned int frame = 0;
 	while (true)
 	{
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -412,8 +472,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			true, //複数時に連続しているか
 			nullptr //震度ステンシルバッファービューのハンドル
 		);
-		float clearColor[] = {1.0f, 1.0f, 0.0f, 1.0f };
+
+		//画面のクリア
+		float r, g, b;
+		//bitシフトでr,g,b成分を抽出して正規化
+		//r = (float)(0xff & frame >> 16) / 255.0f;
+		//g = (float)(0xff & frame >> 8) / 255.0f;
+		//b = (float)(0xff & frame >> 0) / 255.0f;
+		float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 		_cmdList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);//画面のクリア
+		//パイプラインステートのセット
+		_cmdList->SetPipelineState(_pipelinestate);
+		//ルートシグネチャのセット
+		_cmdList->SetComputeRootSignature(rootsignature);
+		//ビューポートのセット
+		_cmdList->RSSetViewports(1, &viewport);
+		//シザー短形のセット
+		_cmdList->RSSetScissorRects(1, &scissorrect);
+		//プリミティブトポロジ(頂点をどのように組み合わせて点・線・ポリゴンを構成するのか)のセット
+		_cmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		//頂点情報のセット
+		_cmdList->IASetVertexBuffers(0, 1, &vbView);
+		_cmdList->IASetIndexBuffer(&ibView);
+		_cmdList->DrawInstanced(3, 1, 0, 0);
 
 		BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
