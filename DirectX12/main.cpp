@@ -275,10 +275,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//頂点シェーダーの受け皿
 	Vertex vertices[] =
 	{
-		{{-0.4f, -0.7f, 0.0f}, {0.0f, 1.0f}}, //左下
-		{{-0.4f, 0.7f, 0.0f}, {0.0f, 0.0f}}, //左上
-		{{0.4f, -0.7f, 0.0f}, {1.0f, 1.0f}}, //右下
-		{{0.4f, 0.7f, 0.0f}, {1.0f, 0.0f}} //右上
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}}, //左下
+		{{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, //左上
+		{{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}}, //右下
+		{{1.0f, 1.0f, 0.0f}, {1.0f, 0.0f}} //右上
 	};
 
 	//CreateCommitResource()用のヒープ構造体の定義
@@ -586,10 +586,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 
 	//定数バッファ作成
-	XMMATRIX matrix = XMMatrixIdentity();
+	auto worldMat = XMMatrixRotationY(XM_PIDIV4);
+	XMFLOAT3 eye(0, 0, -5);//視点ベクトル
+	XMFLOAT3 target(0, 0, 0);//注視点ベクトル
+	XMFLOAT3 up(0, 1, 0);//上ベクトル
+	auto viewMat = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+	auto projMat = XMMatrixPerspectiveFovLH(
+		XM_PIDIV2,//画角は90°
+		static_cast<float>(window_height) / static_cast<float>(window_height),//アスペクト比
+		1.0f,//近いクリッピング面までの距離
+		10.0f//遠いクリッピング面までの距離
+	);
+	//XMMATRIX matrix = XMMatrixIdentity();
 	ID3D12Resource* constBuff = nullptr;
 	heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	resDesc = CD3DX12_RESOURCE_DESC::Buffer((sizeof(matrix) + 0xff) & ~0xff);
+	resDesc = CD3DX12_RESOURCE_DESC::Buffer((sizeof(XMMATRIX) + 0xff) & ~0xff);
 	result = _dev->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
@@ -605,7 +616,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//マップによる定数のコピー
 	XMMATRIX* mapMatrix;
 	result = constBuff->Map(0, nullptr, (void**)&mapMatrix);
-	*mapMatrix = matrix;//行列の内容をコピー
+	*mapMatrix = worldMat * viewMat * projMat;//行列の内容をコピー
 
 	//基本的な情報の受け渡し用ディスクリプタヒープの作成
 	ID3D12DescriptorHeap* basicDescHeap = nullptr;
@@ -652,6 +663,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	MSG msg = {};
 	unsigned int frame = 0;
+	float angle = 0.0f;
 	while (true)
 	{
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -664,6 +676,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{
 			break;
 		}
+		
+		angle += 0.1f;
+		worldMat = XMMatrixRotationY(angle);
+		*mapMatrix = worldMat * viewMat * projMat;
 
 		//DirectX処理
 		auto bbIdx = _swapChain->GetCurrentBackBufferIndex();//現在のバックバッファーを指すインデックスを取得
@@ -712,10 +728,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		_cmdList->SetDescriptorHeaps(1, &basicDescHeap);
 		//ルートパラメータとディスクリプタヒープの関連づけ
 		_cmdList->SetGraphicsRootDescriptorTable(0, basicDescHeap->GetGPUDescriptorHandleForHeapStart());
-
-		auto heapHandle = basicDescHeap->GetGPUDescriptorHandleForHeapStart();
-		heapHandle.ptr += _dev->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		_cmdList->SetGraphicsRootDescriptorTable(1, heapHandle);
 
 		_cmdList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
