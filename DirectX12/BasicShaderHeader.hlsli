@@ -7,10 +7,16 @@ struct Output
     float2 uv : TEXCOORD;
 };
 
-Texture2D<float4> tex : register(t0);//0番スロットに設定されたテクスチャ
-SamplerState smp : register(s0); //0番スロットに設定されたサンプラー
-
-cbuffer cbuff0 : register(b0) //定数バッファー
+//定数バッファ
+cbuffer cbuff0 : register(b0)
 {
-    matrix mat; //変換行列
+    matrix world; //ワールド変換行列
+    matrix viewproj; //ビュープロジェクション行列
+};
+
+cbuffer Material : register(b1)
+{
+    float4 diffuse;
+    float4 specular;
+    float ambient;
 }
