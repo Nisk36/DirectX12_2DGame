@@ -13,23 +13,58 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="ソース ファイル\PMD">
+      <UniqueIdentifier>{03f56709-48db-4a69-a82e-3eea2a12f3ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Shader">
+      <UniqueIdentifier>{2819275a-c873-4ce4-abcb-a1e8068f02bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\PMD">
+      <UniqueIdentifier>{847b619e-770a-4677-827b-e852cdf75008}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="PMDActor.cpp">
+      <Filter>ソース ファイル\PMD</Filter>
+    </ClCompile>
+    <ClCompile Include="PMDRenderer.cpp">
+      <Filter>ソース ファイル\PMD</Filter>
+    </ClCompile>
+    <ClCompile Include="Application.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12Wrapper.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicVertexShader.hlsl">
-      <Filter>ソース ファイル</Filter>
-    </FxCompile>
     <FxCompile Include="BasicPixelShader.hlsl">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="BasicVertexShader.hlsl">
+      <Filter>ソース ファイル\Shader</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="BasicShaderHeader.hlsli">
-      <Filter>ソース ファイル</Filter>
+    <ClInclude Include="DX12Wrapper.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Application.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="PMDActor.h">
+      <Filter>ヘッダー ファイル\PMD</Filter>
+    </ClInclude>
+    <ClInclude Include="PMDRenderer.h">
+      <Filter>ヘッダー ファイル\PMD</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BasicType.hlsli">
+      <Filter>ソース ファイル\Shader</Filter>
     </None>
   </ItemGroup>
 </Project>
