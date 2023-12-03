@@ -3,6 +3,8 @@
 #include<d3d12.h>
 #include<DirectXMath.h>
 #include<vector>
+#include<map>
+#include<unordered_map>
 #include<string>
 #include<wrl.h>
 
@@ -12,6 +14,7 @@ class PMDActor
 {
 	friend PMDRenderer;
 private:
+	unsigned int _duration = 0;
 	PMDRenderer& _renderer;
 	Dx12Wrapper& _dx12;
 	template<typename T>
@@ -56,7 +59,7 @@ private:
 	};
 
 	Transform _transform;
-	Transform* _mappedTransform = nullptr;
+	DirectX::XMMATRIX* _mappedMatrices = nullptr;
 	ComPtr<ID3D12Resource> _transformBuff = nullptr;
 
 	//マテリアル関連
@@ -66,6 +69,24 @@ private:
 	std::vector<ComPtr<ID3D12Resource>> _sphResources;
 	std::vector<ComPtr<ID3D12Resource>> _spaResources;
 	std::vector<ComPtr<ID3D12Resource>> _toonResources;
+
+	struct BoneNode {
+		uint32_t boneIdx;//ボーンインデックス
+		uint32_t boneType;//ボーン種別
+		uint32_t parentBone;
+		uint32_t ikParentBone;//IK親ボーン
+		DirectX::XMFLOAT3 startPos;//ボーン基準点(回転中心)
+		std::vector<BoneNode*> children;//子ノード
+	};
+
+	//ボーン関連
+	std::vector<DirectX::XMMATRIX> _boneMatrices;
+	std::vector<std::string> _boneNameArray;//インデックスto名前
+	std::vector<BoneNode*> _boneNodeAddressArray;//インデックスtoノード
+
+	std::map<std::string, BoneNode> _boneNodeTable;
+	std::vector<uint32_t> _kneeIdxes;//ひざのインデックス(IK用)
+
 
 	//読み込んだマテリアルをもとにマテリアルバッファを作成
 	HRESULT CreateMaterialData();
@@ -79,8 +100,66 @@ private:
 
 	//PMDファイルのロード
 	HRESULT LoadPMDFile(const char* path);
+	///キーフレーム構造体
+	struct KeyFrame {
+		unsigned int frameNo;//フレーム№(アニメーション開始からの経過時間)
+		DirectX::XMVECTOR quaternion;//クォータニオン
+		DirectX::XMFLOAT3 offset;//IKの初期座標からのオフセット情報
+		DirectX::XMFLOAT2 p1, p2;//ベジェの中間コントロールポイント
+		KeyFrame(
+			unsigned int fno,
+			const DirectX::XMVECTOR& q,
+			const DirectX::XMFLOAT3& ofst,
+			const DirectX::XMFLOAT2& ip1,
+			const DirectX::XMFLOAT2& ip2) :
+			frameNo(fno),
+			quaternion(q),
+			offset(ofst),
+			p1(ip1),
+			p2(ip2) {}
+	};
+	std::unordered_map<std::string, std::vector<KeyFrame>> _motiondata;
+
+	struct PMDIK {
+		uint16_t boneIdx;//IK対象のボーンを示す
+		uint16_t targetIdx;//ターゲットに近づけるためのボーンのインデックス
+		uint16_t iterations;//試行回数
+		float limit;//一回当たりの回転制限
+		std::vector<uint16_t> nodeIdxes;//間のノード番号
+	};
+	std::vector<PMDIK> _ikData;
+
+	///CCD-IKによりボーン方向を解決
+	///@param ik 対象IKオブジェクト
+	void SolveCCDIK(const PMDIK& ik);
+
+	///余弦定理IKによりボーン方向を解決
+	///@param ik 対象IKオブジェクト
+	void SolveCosineIK(const PMDIK& ik);
+
+	///LookAt行列によりボーン方向を解決
+	///@param ik 対象IKオブジェクト
+	void SolveLookAt(const PMDIK& ik);
+
+	void IKSolve(int frameNo);
 
 	float _angle;//テスト用Y軸回転
+
+	void RecursiveMatrixMultipy(BoneNode* node, const DirectX::XMMATRIX& mat);
+
+	float GetYFromXOnBezier(float x, const DirectX::XMFLOAT2& a, const DirectX::XMFLOAT2& b, uint8_t n = 12);
+
+	DWORD _startTime;//アニメーション開始時点のミリ秒時刻
+
+	void MotionUpdate();
+
+	//IKオンオフデータ
+	struct VMDIKEnable {
+		uint32_t frameNo;
+		std::unordered_map<std::string, bool> ikEnableTable;
+	};
+	std::vector<VMDIKEnable> _ikEnableData;
+
 public:
 	PMDActor(const char* filepath, PMDRenderer& renderer);
 	~PMDActor();
@@ -88,5 +167,7 @@ public:
 	PMDActor* Clone();
 	void Update();
 	void Draw();
-
+	void LoadVMDFile(const char* filepath, const char* name);
+	void PlayAnimation();
+	void LookAt(float x, float y, float z);
 };

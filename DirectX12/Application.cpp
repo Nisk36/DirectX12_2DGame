@@ -30,7 +30,7 @@ Application::CreateGameWindow(HWND& hwnd, WNDCLASSEX& windowClass) {
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);//ウィンドウのサイズはちょっと面倒なので関数を使って補正する
 	//ウィンドウオブジェクトの生成
 	hwnd = CreateWindow(windowClass.lpszClassName,//クラス名指定
-		_T("DX12リファクタリング"),//タイトルバーの文字
+		_T("DX12Study"),//タイトルバーの文字
 		WS_OVERLAPPEDWINDOW,//タイトルバーと境界線があるウィンドウです
 		CW_USEDEFAULT,//表示X座標はOSにお任せします
 		CW_USEDEFAULT,//表示Y座標はOSにお任せします
@@ -100,7 +100,9 @@ Application::Init() {
 	_dx12.reset(new Dx12Wrapper(_hwnd));
 	_pmdRenderer.reset(new PMDRenderer(*_dx12));
 	_pmdActor.reset(new PMDActor("model/初音ミク.pmd", *_pmdRenderer));
-
+	_pmdActor->LoadVMDFile("motion/motion.vmd", "pose");
+	_dx12->ExecuteCommand();
+	_pmdActor->PlayAnimation();
 	return true;
 }
 
