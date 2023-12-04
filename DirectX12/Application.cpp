@@ -69,8 +69,6 @@ Application::Run() {
 			break;
 		}
 
-		//全体の描画準備
-		_dx12->BeginDraw();
 		//PMD用の描画パイプラインに合わせる
 		_dx12->CommandList()->SetPipelineState(_pmdRenderer->GetPipelineState());
 		//ルートシグネチャもPMD用に合わせる
@@ -82,7 +80,8 @@ Application::Run() {
 		_pmdActor->Update();
 		_pmdActor->Draw();
 		_dx12->PostDrawToPera1();
-		//_dx12->Draw();
+		//全体の描画準備
+		_dx12->BeginDraw();
 		_dx12->EndDraw();
 
 		//フリップ

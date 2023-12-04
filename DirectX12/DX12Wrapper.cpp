@@ -588,7 +588,7 @@ Dx12Wrapper::EndDraw() {
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	_cmdList->ResourceBarrier(1, &barrier);
 
-
+	
 	//レンダーターゲットを指定
 	auto rtvH = _rtvHeaps->GetCPUDescriptorHandleForHeapStart();
 	rtvH.ptr += bbIdx * _dev->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -616,7 +616,6 @@ Dx12Wrapper::EndDraw() {
 
 	_cmdList->ResourceBarrier(1,
 		&barrier);
-
 	ExecuteCommand();
 }
 
@@ -724,6 +723,14 @@ Dx12Wrapper::PreDrawToPera1() {
 	auto rtvHeapPointer = _peraRTVHeap->GetCPUDescriptorHandleForHeapStart();
 	auto dsvHeapPointer = _dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	_cmdList->OMSetRenderTargets(1, &rtvHeapPointer, false, &dsvHeapPointer);
+
+	//画面クリア
+	float clearColor[] = { 1.0f,1.0f,1.0f,1.0f };//白色
+	_cmdList->ClearRenderTargetView(rtvHeapPointer, clearColor, 0, nullptr);
+
+	//ビューポート、シザー矩形のセット
+	_cmdList->RSSetViewports(1, _viewport.get());
+	_cmdList->RSSetScissorRects(1, _scissorrect.get());
 	return true;
 }
 

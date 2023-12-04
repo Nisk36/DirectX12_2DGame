@@ -12,6 +12,13 @@
 #include<wrl.h>
 #include<memory>
 
+struct Size {
+	int width;
+	int height;
+	Size() {}
+	Size(int w, int h) :width(w), height(h) {}
+};
+
 class Dx12Wrapper;
 class PMDRenderer;
 class PMDActor;
