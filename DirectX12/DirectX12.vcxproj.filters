@@ -47,6 +47,12 @@
     <FxCompile Include="BasicVertexShader.hlsl">
       <Filter>ソース ファイル\Shader</Filter>
     </FxCompile>
+    <FxCompile Include="peraVertexShader.hlsl">
+      <Filter>ソース ファイル\Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="peraPixelShader.hlsl">
+      <Filter>ソース ファイル\Shader</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DX12Wrapper.h">
@@ -64,6 +70,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="BasicType.hlsli">
+      <Filter>ソース ファイル\Shader</Filter>
+    </None>
+    <None Include="peraShaderHeader.hlsli">
       <Filter>ソース ファイル\Shader</Filter>
     </None>
   </ItemGroup>

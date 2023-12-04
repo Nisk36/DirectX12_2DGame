@@ -53,6 +53,16 @@ class Dx12Wrapper
 	//デプスステンシルビューの生成
 	HRESULT CreateDepthStencilView();
 
+	//1枚目レンダリング用
+	//いわゆるペラポリに張り付けるための絵の
+	//メモリリソースとそのビュー
+	ComPtr<ID3D12DescriptorHeap> _peraRTVHeap;
+	ComPtr<ID3D12DescriptorHeap> _peraRegisterHeap;
+	ComPtr<ID3D12Resource> _peraResource;
+	//１枚目ペラポリのためのリソースとビューを
+	//作成
+	bool CreatePeraResourcesAndView();
+
 	//スワップチェインの生成
 	HRESULT CreateSwapChain(const HWND& hwnd);
 
@@ -77,6 +87,17 @@ class Dx12Wrapper
 	//テクスチャ名からテクスチャバッファ作成、中身をコピー
 	ID3D12Resource* CreateTextureFromFile(const char* texpath);
 
+	//ペラポリ用頂点バッファ(N字の4点)
+	ComPtr<ID3D12Resource> _peraVB;
+	D3D12_VERTEX_BUFFER_VIEW _peraVBV;
+
+	//ペラポリ用パイプライン＆ルートシグネチャ
+	ComPtr<ID3D12PipelineState> _peraPipeline;
+	ComPtr<ID3D12RootSignature> _peraRS;
+
+	bool CreatePeraVertex();
+	bool CreatePeraPipeline();
+
 
 
 public:
@@ -85,6 +106,7 @@ public:
 
 	void Update();
 	void BeginDraw();
+	void Draw();
 	void EndDraw();
 	void ExecuteCommand();
 	///テクスチャパスから必要なテクスチャバッファへのポインタを返す
@@ -97,5 +119,12 @@ public:
 
 	void SetScene();
 
+	//ペラポリゴンへの描画準備
+	bool PreDrawToPera1();
+	//ペラポリゴンへの描画後処理
+	void PostDrawToPera1();
+
+
 };
+
 
